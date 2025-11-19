@@ -8,68 +8,71 @@
   import * as THREE from 'three';
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
-  // IMPORTANTE: Usamos GLTFLoader
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // --- 1. CONFIGURACIÓN DE LA ESCENA ---
+  // --- 1. ESCENA ---
   const container = document.getElementById('canvas-container');
   const scene = new THREE.Scene();
-  
-  // Cámara
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-  camera.position.set(0, 2, 12); 
+  camera.position.set(0, 2, 8); // Cámara cerca
 
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
 
-  // --- 2. ILUMINACIÓN ---
+  // --- 2. LUCES ---
   const ambientLight = new THREE.AmbientLight(0xffffff, 2); 
   scene.add(ambientLight);
-
   const dirLight = new THREE.DirectionalLight(0xffffff, 3);
   dirLight.position.set(5, 10, 7);
   scene.add(dirLight);
 
-  // --- 3. CARGAR EL MODELO GLTF/GLB ---
+  // --- VARIABLES DE ANIMACIÓN ---
+  let mixer: THREE.AnimationMixer;
+  const clock = new THREE.Clock();
+
+  // --- 3. CARGAR PERSONAJE ---
   const loader = new GLTFLoader();
   let model: any;
 
-  // 👇 CAMBIA '/scene.gltf' POR EL NOMBRE DE TU ARCHIVO
+  // 👇 NOTA LA RUTA: Entramos a la carpeta 'personaje'
   loader.load('/scene.gltf', (gltf: any) => {
     
-    // CORRECCIÓN DEL ERROR:
-    // En archivos GLTF, el modelo está dentro de la propiedad .scene
-    model = gltf.scene; 
+    model = gltf.scene;
 
-    // === AUTO-AJUSTE: CENTRAR Y ESCALAR ===
+    // === ACTIVAR ANIMACIÓN ===
+    if (gltf.animations && gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+        // Reproducimos la primera animación que encuentre (ej: Idle, Run, Walk)
+        const action = mixer.clipAction(gltf.animations[0]);
+        action.play();
+        console.log("Reproduciendo animación:", gltf.animations[0].name);
+    } else {
+        console.warn("No se encontraron animaciones en este archivo.");
+    }
+
+    // === AJUSTES VISUALES ===
+    // Auto-escala
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-
-    // Centrar
-    model.position.x += (model.position.x - center.x);
-    model.position.y += (model.position.y - center.y);
-    model.position.z += (model.position.z - center.z);
-
-    // Escalar (Ajustamos para que mida 6 unidades de alto)
     const maxAxis = Math.max(size.x, size.y, size.z);
-    const targetSize = 6; 
-    const scaleFactor = targetSize / maxAxis;
+    model.scale.set(5/maxAxis, 5/maxAxis, 5/maxAxis); // Tamaño 5 unidades
     
-    model.scale.set(scaleFactor, scaleFactor, scaleFactor);
-    model.position.y = -2; 
+    // Auto-centrado
+    const center = box.getCenter(new THREE.Vector3());
+    model.position.x += (model.position.x - center.x);
+    model.position.y = -2.5; // Bajamos un poco los pies
+    model.position.z += (model.position.z - center.z);
 
     scene.add(model);
 
-    console.log("GLTF cargado correctamente. Escala:", scaleFactor);
-
-    // --- ANIMACIÓN CON SCROLL (GSAP) ---
+    // --- MOVIMIENTO CON SCROLL (OPCIONAL) ---
+    // Hacemos que el personaje gire un poco al bajar
     gsap.to(model.rotation, {
-      y: Math.PI * 2, 
+      y: Math.PI * 0.5, 
       scrollTrigger: {
         trigger: "body",
         start: "top top",
@@ -79,23 +82,23 @@
     });
     
     // Animación de entrada
-    gsap.from(model.scale, { x:0, y:0, z:0, duration: 1.5, ease: "elastic.out(1, 0.5)" });
+    gsap.from(model.scale, { x:0, y:0, z:0, duration: 1, ease: "back.out" });
 
-  }, 
-  // Progreso
-  (xhr) => { console.log((xhr.loaded / xhr.total * 100) + '% cargado'); },
-  // Errores
-  (error) => { console.error('ERROR AL CARGAR GLTF:', error); }
-  );
+  }, undefined, (error) => { console.error('ERROR:', error); });
 
-  // --- 4. LOOP DE ANIMACIÓN ---
+  // --- 4. LOOP ---
   function animate() {
     requestAnimationFrame(animate);
+    
+    // Actualizar animación interna (si existe)
+    const delta = clock.getDelta();
+    if (mixer) mixer.update(delta);
+
     renderer.render(scene, camera);
   }
   animate();
 
-  // --- 5. REDIMENSIONAR ---
+  // Resize
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
