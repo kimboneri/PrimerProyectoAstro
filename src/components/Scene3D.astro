@@ -16,7 +16,7 @@
   const container = document.getElementById('canvas-container');
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-  camera.position.set(0, 2, 8); // Cámara cerca
+  camera.position.set(0, 0.2, 10); // Cámara cerca
 
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -27,7 +27,7 @@
   const ambientLight = new THREE.AmbientLight(0xffffff, 2); 
   scene.add(ambientLight);
   const dirLight = new THREE.DirectionalLight(0xffffff, 3);
-  dirLight.position.set(5, 10, 7);
+  dirLight.position.set(0, 10, 7);
   scene.add(dirLight);
 
   // --- VARIABLES DE ANIMACIÓN ---
@@ -39,7 +39,7 @@
   let model: any;
 
   // 👇 NOTA LA RUTA: Entramos a la carpeta 'personaje'
-  loader.load('/scene.gltf', (gltf: any) => {
+  loader.load('/object2/adamHead.gltf', (gltf: any) => {
     
     model = gltf.scene;
 
@@ -59,7 +59,7 @@
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const maxAxis = Math.max(size.x, size.y, size.z);
-    model.scale.set(5/maxAxis, 5/maxAxis, 5/maxAxis); // Tamaño 5 unidades
+    model.scale.set(10/maxAxis, 10/maxAxis, 10/maxAxis); // Tamaño 5 unidades
     
     // Auto-centrado
     const center = box.getCenter(new THREE.Vector3());
@@ -72,7 +72,7 @@
     // --- MOVIMIENTO CON SCROLL (OPCIONAL) ---
     // Hacemos que el personaje gire un poco al bajar
     gsap.to(model.rotation, {
-      y: Math.PI * 0.5, 
+      y: Math.PI * 1, 
       scrollTrigger: {
         trigger: "body",
         start: "top top",
